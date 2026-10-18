@@ -121,6 +121,40 @@ export const useInvoiceDraftStore = create<InvoiceDraftState>((set, get) => ({
 
   addItem: (newItem) => {
     const { days, items } = get()
+
+    // Check if item with same equipment and source already exists
+    const existingIndex = items.findIndex((it) => {
+      if (it.equipmentId !== newItem.equipmentId || it.source !== newItem.source) {
+        return false
+      }
+      if (newItem.source === 'OUTSOURCE') {
+        const existingSupplier = (it.supplierName || '').trim().toLowerCase()
+        const newSupplier = (newItem.supplierName || '').trim().toLowerCase()
+        return existingSupplier === newSupplier
+      }
+      return true
+    })
+
+    if (existingIndex >= 0) {
+      const existing = items[existingIndex]
+      const mergedQuantity = existing.quantity + newItem.quantity
+      const unitPrice = newItem.unitPrice
+      const lineTotal = computeLineTotal(mergedQuantity, unitPrice, days)
+
+      const updatedItems = [...items]
+      updatedItems[existingIndex] = {
+        ...existing,
+        quantity: mergedQuantity,
+        unitPrice,
+        lineTotal,
+        availableStock: newItem.availableStock,
+        costPrice: newItem.costPrice !== undefined ? newItem.costPrice : existing.costPrice,
+      }
+
+      set({ items: updatedItems })
+      return
+    }
+
     const tempId = `temp-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`
     const lineTotal = computeLineTotal(newItem.quantity, newItem.unitPrice, days)
 

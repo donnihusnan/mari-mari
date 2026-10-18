@@ -2,19 +2,24 @@ import { createServerFn } from '@tanstack/react-start'
 import { authMiddleware } from '@/features/auth/server/auth.middleware'
 import { prisma } from '@/lib/prisma'
 import { InvoiceStatus, PaymentStatus } from '@prisma/client'
+import { z } from 'zod'
 
 export const getDashboardDataFn = createServerFn({ method: 'GET' })
   .middleware([authMiddleware])
   .handler(async () => {
-    // Current date in Asia/Jakarta (start of today)
-    const now = new Date()
-    const todayStr = now.toISOString().split('T')[0]
-    const today = new Date(todayStr)
-    const tomorrow = new Date(today)
-    tomorrow.setDate(tomorrow.getDate() + 1)
+    // Current date in Asia/Jakarta
+    const jakartaDateStr = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Jakarta',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(new Date())
 
-    // First day of current month
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+    const endOfToday = new Date(`${jakartaDateStr}T23:59:59.999Z`)
+
+    // First day of current month in Jakarta
+    const [yearNum, monthNum] = jakartaDateStr.split('-').map(Number)
+    const startOfMonth = new Date(Date.UTC(yearNum, monthNum - 1, 1))
 
     const [
       activeCount,
@@ -47,36 +52,38 @@ export const getDashboardDataFn = createServerFn({ method: 'GET' })
       // 4. Returns scheduled for today or overdue
       prisma.invoice.findMany({
         where: {
-          status: InvoiceStatus.ACTIVE,
-          rentEnd: { lte: today },
+          status: { in: [InvoiceStatus.ACTIVE, InvoiceStatus.BOOKED] },
+          rentEnd: { lte: endOfToday },
         },
         orderBy: { rentEnd: 'asc' },
-        take: 5,
+        take: 10,
         select: {
           id: true,
           number: true,
           customerName: true,
           customerPhone: true,
           rentEnd: true,
+          status: true,
           total: true,
           paymentStatus: true,
         },
       }),
 
-      // 5. Pickups scheduled for today
+      // 5. Pickups scheduled for today or overdue
       prisma.invoice.findMany({
         where: {
           status: InvoiceStatus.BOOKED,
-          rentStart: { lte: today },
+          rentStart: { lte: endOfToday },
         },
         orderBy: { rentStart: 'asc' },
-        take: 5,
+        take: 10,
         select: {
           id: true,
           number: true,
           customerName: true,
           customerPhone: true,
           rentStart: true,
+          status: true,
           total: true,
           paymentStatus: true,
         },
@@ -127,6 +134,7 @@ export const getDashboardDataFn = createServerFn({ method: 'GET' })
         customerName: inv.customerName,
         customerPhone: inv.customerPhone,
         rentEnd: inv.rentEnd.toISOString().split('T')[0],
+        status: inv.status,
         total: inv.total,
         paymentStatus: inv.paymentStatus,
       })),
@@ -136,6 +144,7 @@ export const getDashboardDataFn = createServerFn({ method: 'GET' })
         customerName: inv.customerName,
         customerPhone: inv.customerPhone,
         rentStart: inv.rentStart.toISOString().split('T')[0],
+        status: inv.status,
         total: inv.total,
         paymentStatus: inv.paymentStatus,
       })),
@@ -153,3 +162,76 @@ export const getDashboardDataFn = createServerFn({ method: 'GET' })
       })),
     }
   })
+
+const calendarFilterSchema = z.object({
+  year: z.number().int(),
+  month: z.number().int().min(1).max(12),
+})
+
+export const getCalendarInvoicesFn = createServerFn({ method: 'GET' })
+  .middleware([authMiddleware])
+  .validator((data: unknown) => calendarFilterSchema.parse(data))
+  .handler(async ({ data }) => {
+    const { year, month } = data
+    const startOfMonth = new Date(Date.UTC(year, month - 1, 1, 0, 0, 0))
+    const endOfMonth = new Date(Date.UTC(year, month, 0, 23, 59, 59, 999))
+
+    const invoices = await prisma.invoice.findMany({
+      where: {
+        OR: [
+          {
+            rentStart: { lte: endOfMonth },
+            rentEnd: { gte: startOfMonth },
+          },
+          {
+            createdAt: {
+              gte: startOfMonth,
+              lte: endOfMonth,
+            },
+          },
+        ],
+        status: { not: InvoiceStatus.CANCELLED },
+      },
+      orderBy: { rentStart: 'asc' },
+      select: {
+        id: true,
+        number: true,
+        customerName: true,
+        customerPhone: true,
+        rentStart: true,
+        rentEnd: true,
+        days: true,
+        status: true,
+        paymentStatus: true,
+        total: true,
+        amountPaid: true,
+        createdAt: true,
+        items: {
+          select: {
+            equipmentName: true,
+            quantity: true,
+          },
+        },
+      },
+    })
+
+    return invoices.map((inv) => ({
+      id: inv.id,
+      number: inv.number,
+      customerName: inv.customerName,
+      customerPhone: inv.customerPhone,
+      rentStart: inv.rentStart.toISOString().split('T')[0],
+      rentEnd: inv.rentEnd.toISOString().split('T')[0],
+      days: inv.days,
+      status: inv.status,
+      paymentStatus: inv.paymentStatus,
+      total: inv.total,
+      amountPaid: inv.amountPaid,
+      createdAt: inv.createdAt.toISOString(),
+      items: inv.items.map((it) => ({
+        name: it.equipmentName,
+        quantity: it.quantity,
+      })),
+    }))
+  })
+

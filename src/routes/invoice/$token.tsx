@@ -97,19 +97,20 @@ function PublicInvoicePage() {
   return (
     <div className="min-h-screen bg-muted/30 py-8 px-4 font-sans text-foreground sm:px-6 print:min-h-0 print:bg-white print:p-0 print:text-black">
       {/* Action Bar (Hidden when printing) */}
-      <div className="mx-auto mb-6 flex max-w-3xl items-center justify-between print:hidden">
-        <div className="flex items-center gap-2">
-          <img
-            src="/marimari-logo.png"
-            alt="Mari Mari Outdoor"
-            className="size-7"
-          />
-          <span className="text-xs font-semibold text-muted-foreground">
-            Mari Mari Outdoor • Digital Invoice
-          </span>
-        </div>
+      <div className="sticky top-0 z-40 -mx-4 -mt-8 mb-6 border-b border-border bg-background/95 px-4 py-3 backdrop-blur-sm sm:-mx-6 sm:px-6 print:hidden">
+        <div className="mx-auto flex max-w-3xl items-center justify-between">
+          <div className="flex items-center gap-2">
+            <img
+              src="/marimari-logo.png"
+              alt="Mari Mari Outdoor"
+              className="size-7"
+            />
+            <span className="text-xs font-semibold text-muted-foreground">
+              Mari Mari Outdoor • Digital Invoice
+            </span>
+          </div>
 
-        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2">
           <Button
             onClick={handleDownloadPdf}
             disabled={isExporting}
@@ -145,6 +146,7 @@ function PublicInvoicePage() {
           </a>
         </div>
       </div>
+    </div>
 
       {/* Main Printable Document Card */}
       <div

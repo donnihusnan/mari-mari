@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { dashboardQueryOptions, dashboardKeys } from '@/features/dashboard/queries'
@@ -7,6 +8,7 @@ import { formatIDR } from '@/lib/money'
 import { formatDateID } from '@/lib/dates'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { MonthlyCalendar } from '@/features/dashboard/components/monthly-calendar'
 import {
   Clock,
   Calendar,
@@ -18,6 +20,7 @@ import {
   CheckCircle2,
   Loader2,
   FileText,
+  Phone,
 } from 'lucide-react'
 
 export const Route = createFileRoute('/_admin/')({
@@ -36,6 +39,16 @@ function DashboardPage() {
       queryClient.invalidateQueries({ queryKey: dashboardKeys.all })
     },
   })
+
+  // Current date in Asia/Jakarta (YYYY-MM-DD)
+  const todayStr = useMemo(() => {
+    return new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Jakarta',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(new Date())
+  }, [])
 
   if (isLoading) {
     return (
@@ -151,52 +164,77 @@ function DashboardPage() {
         </Card>
       </div>
 
-      {/* Two Column Layout: Operational Schedules & Recent Activity */}
-      <div className="grid gap-6 lg:grid-cols-12">
-        {/* Left Column: Schedules for Today (Pickups & Returns) */}
-        <div className="space-y-6 lg:col-span-7">
-          {/* Today's Pickups */}
-          <Card className="border-border">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-semibold flex items-center justify-between">
-                <span className="flex items-center gap-2">
-                  <PackageCheck className="size-4 text-info" />
-                  <span>Jadwal Pengambilan (Pickups Hari Ini)</span>
-                </span>
-                <span className="text-xs font-normal text-muted-foreground tabular-nums">
-                  {dash.todayPickups.length} pesanan
-                </span>
-              </CardTitle>
-              <CardDescription className="text-xs">
-                Booking yang dijadwalkan untuk diambil oleh pelanggan hari ini.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {dash.todayPickups.length === 0 ? (
-                <div className="py-6 text-center text-xs text-muted-foreground">
-                  Tidak ada jadwal pengambilan alat untuk hari ini.
+      {/* Three Column Operational Grid: Pickups, Returns, Recent Activity */}
+      <div className="grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+        {/* Card 1: Today's Pickups */}
+        <Card className="border-border flex flex-col h-[460px]">
+          <CardHeader className="pb-3 shrink-0">
+            <CardTitle className="text-sm font-semibold flex items-center justify-between">
+              <span className="flex items-center gap-2">
+                <PackageCheck className="size-4 text-info" />
+                <span>Jadwal Pengambilan</span>
+              </span>
+              <span className="text-xs font-normal text-muted-foreground tabular-nums">
+                {dash.todayPickups.length} pesanan
+              </span>
+            </CardTitle>
+            <CardDescription className="text-xs">
+              Booking yang dijadwalkan diambil pelanggan hari ini.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex-1 min-h-0 overflow-y-auto pr-1 flex flex-col">
+            {dash.todayPickups.length === 0 ? (
+              <div className="py-12 text-center text-xs text-muted-foreground my-auto flex flex-col items-center justify-center gap-2">
+                <div className="size-9 rounded-full bg-muted/60 flex items-center justify-center text-muted-foreground">
+                  <PackageCheck className="size-4" />
                 </div>
-              ) : (
-                <div className="space-y-3">
-                  {dash.todayPickups.map((item) => (
+                <p className="font-medium text-foreground">Semua alat sudah diambil</p>
+                <p className="text-[11px] text-muted-foreground">
+                  Tidak ada jadwal pengambilan tersisa untuk hari ini.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-2.5">
+                {dash.todayPickups.map((item) => {
+                  const isOverdue = item.rentStart < todayStr
+                  return (
                     <div
                       key={item.id}
-                      className="flex items-center justify-between rounded-lg border border-border p-3 text-xs"
+                      className="flex items-center justify-between rounded-lg border border-border/70 p-2.5 text-xs bg-card hover:bg-muted/30 transition-colors"
                     >
-                      <div>
-                        <Link
-                          to={`/invoices/${item.id}` as any}
-                          className="font-mono font-semibold hover:underline"
-                        >
-                          {item.number}
-                        </Link>
-                        <div className="font-medium text-foreground">{item.customerName}</div>
-                        <div className="text-[11px] text-muted-foreground">
-                          {item.customerPhone}
+                      <div className="min-w-0 pr-2 space-y-1">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <Link
+                            to={`/invoices/${item.id}` as any}
+                            className="font-mono font-semibold hover:underline"
+                          >
+                            {item.number}
+                          </Link>
+                          {item.status && <InvoiceStatusBadge status={item.status as any} />}
+                        </div>
+                        <div className="font-medium text-foreground truncate">{item.customerName}</div>
+                        <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                          {item.customerPhone && (
+                            <a
+                              href={`https://wa.me/${item.customerPhone.replace(/\D/g, '')}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="hover:text-primary transition-colors flex items-center gap-1 truncate"
+                              title="Chat WhatsApp"
+                            >
+                              <Phone className="size-3 shrink-0" />
+                              <span>{item.customerPhone}</span>
+                            </a>
+                          )}
+                          {isOverdue && (
+                            <span className="text-amber-600 dark:text-amber-400 font-medium">
+                              (Terlambat)
+                            </span>
+                          )}
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 shrink-0">
                         <Button
                           size="sm"
                           variant="outline"
@@ -204,61 +242,108 @@ function DashboardPage() {
                             transitionMutation.mutate({ id: item.id, status: 'ACTIVE' })
                           }
                           disabled={transitionMutation.isPending}
-                          className="text-xs h-7 gap-1"
+                          className="text-xs h-7 gap-1 active:scale-[0.98] transition-all"
                         >
                           <CheckCircle2 className="size-3 text-success" />
                           <span>Tandai Diambil</span>
                         </Button>
                       </div>
                     </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                  )
+                })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
-          {/* Today's Returns */}
-          <Card className="border-border">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-semibold flex items-center justify-between">
-                <span className="flex items-center gap-2">
-                  <Clock className="size-4 text-warning" />
-                  <span>Jadwal Pengembalian (Returns Hari Ini)</span>
-                </span>
-                <span className="text-xs font-normal text-muted-foreground tabular-nums">
-                  {dash.todayReturns.length} pesanan
-                </span>
-              </CardTitle>
-              <CardDescription className="text-xs">
-                Rental aktif yang dijadwalkan kembali hari ini atau telah melewati batas sewa.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {dash.todayReturns.length === 0 ? (
-                <div className="py-6 text-center text-xs text-muted-foreground">
-                  Tidak ada pengembalian alat yang dijadwalkan hari ini.
+        {/* Card 2: Today's Returns */}
+        <Card className="border-border flex flex-col h-[460px]">
+          <CardHeader className="pb-3 shrink-0">
+            <CardTitle className="text-sm font-semibold flex items-center justify-between">
+              <span className="flex items-center gap-2">
+                <Clock className="size-4 text-warning" />
+                <span>Jadwal Pengembalian</span>
+              </span>
+              <span className="text-xs font-normal text-muted-foreground tabular-nums">
+                {dash.todayReturns.length} pesanan
+              </span>
+            </CardTitle>
+            <CardDescription className="text-xs">
+              Rental yang dijadwalkan kembali hari ini atau lewat batas.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex-1 min-h-0 overflow-y-auto pr-1 flex flex-col">
+            {dash.todayReturns.length === 0 ? (
+              <div className="py-12 text-center text-xs text-muted-foreground my-auto flex flex-col items-center justify-center gap-2">
+                <div className="size-9 rounded-full bg-muted/60 flex items-center justify-center text-muted-foreground">
+                  <CheckCircle2 className="size-4 text-success" />
                 </div>
-              ) : (
-                <div className="space-y-3">
-                  {dash.todayReturns.map((item) => (
+                <p className="font-medium text-foreground">Tidak ada pengembalian</p>
+                <p className="text-[11px] text-muted-foreground">
+                  Tidak ada alat yang dijadwalkan kembali hari ini.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-2.5">
+                {dash.todayReturns.map((item) => {
+                  const isOverdue = item.rentEnd < todayStr
+                  const diffDays = isOverdue
+                    ? Math.max(
+                        1,
+                        Math.round(
+                          (new Date(todayStr).getTime() - new Date(item.rentEnd).getTime()) /
+                            (1000 * 60 * 60 * 24),
+                        ),
+                      )
+                    : 0
+                  return (
                     <div
                       key={item.id}
-                      className="flex items-center justify-between rounded-lg border border-border p-3 text-xs"
+                      className="flex items-center justify-between rounded-lg border border-border/70 p-2.5 text-xs bg-card hover:bg-muted/30 transition-colors"
                     >
-                      <div>
-                        <Link
-                          to={`/invoices/${item.id}` as any}
-                          className="font-mono font-semibold hover:underline"
-                        >
-                          {item.number}
-                        </Link>
-                        <div className="font-medium text-foreground">{item.customerName}</div>
-                        <div className="text-[11px] text-muted-foreground">
-                          Tenggat: {formatDateID(item.rentEnd)}
+                      <div className="min-w-0 pr-2 space-y-1">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <Link
+                            to={`/invoices/${item.id}` as any}
+                            className="font-mono font-semibold hover:underline"
+                          >
+                            {item.number}
+                          </Link>
+                          {item.status && <InvoiceStatusBadge status={item.status as any} />}
+                        </div>
+                        <div className="font-medium text-foreground truncate">{item.customerName}</div>
+                        <div className="text-[11px] truncate flex items-center gap-1.5">
+                          {isOverdue ? (
+                            <span className="text-destructive font-medium flex items-center gap-1">
+                              <AlertCircle className="size-3 shrink-0" />
+                              <span>
+                                Tenggat: {formatDateID(item.rentEnd)} (Lewat {diffDays} hr)
+                              </span>
+                            </span>
+                          ) : (
+                            <span className="text-muted-foreground">
+                              Tenggat: Hari Ini ({formatDateID(item.rentEnd)})
+                            </span>
+                          )}
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        {item.status === 'BOOKED' && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() =>
+                              transitionMutation.mutate({ id: item.id, status: 'ACTIVE' })
+                            }
+                            disabled={transitionMutation.isPending}
+                            className="text-xs h-7 px-2 gap-1 active:scale-[0.98] transition-all"
+                            title="Tandai pesanan telah diambil"
+                          >
+                            <CheckCircle2 className="size-3 text-success" />
+                            <span>Diambil</span>
+                          </Button>
+                        )}
                         <Button
                           size="sm"
                           variant="outline"
@@ -266,79 +351,94 @@ function DashboardPage() {
                             transitionMutation.mutate({ id: item.id, status: 'RETURNED' })
                           }
                           disabled={transitionMutation.isPending}
-                          className="text-xs h-7 gap-1"
+                          className="text-xs h-7 px-2.5 gap-1 active:scale-[0.98] transition-all"
                         >
                           <CheckCircle2 className="size-3 text-primary" />
-                          <span>Tandai Kembali</span>
+                          <span>Kembali</span>
                         </Button>
                       </div>
                     </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Right Column: Recent Invoices & Quick Links */}
-        <div className="space-y-6 lg:col-span-5">
-          {/* Recent Invoices Card */}
-          <Card className="border-border">
-            <CardHeader className="pb-3 flex flex-row items-center justify-between">
-              <div>
-                <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                  <FileText className="size-4 text-muted-foreground" />
-                  <span>Transaksi Terkini</span>
-                </CardTitle>
-                <CardDescription className="text-xs">
-                  Invoice terbaru yang tercatat di sistem.
-                </CardDescription>
+                  )
+                })}
               </div>
-              <Link
-                to={'/invoices' as any}
-                className="text-xs text-muted-foreground hover:text-foreground inline-flex items-center gap-1 font-medium"
-              >
-                <span>Semua</span>
-                <ArrowRight className="size-3" />
-              </Link>
-            </CardHeader>
-            <CardContent>
-              {dash.recentInvoices.length === 0 ? (
-                <div className="py-6 text-center text-xs text-muted-foreground">
-                  Belum ada transaksi invoice.
-                </div>
-              ) : (
-                <div className="divide-y divide-border/60">
-                  {dash.recentInvoices.map((inv) => (
-                    <Link
-                      key={inv.id}
-                      to={`/invoices/${inv.id}` as any}
-                      className="flex items-center justify-between py-3 hover:bg-muted/30 px-2 rounded-lg transition"
-                    >
-                      <div className="space-y-0.5">
-                        <div className="flex items-center gap-2">
-                          <span className="font-mono text-xs font-semibold text-foreground">
-                            {inv.number}
-                          </span>
-                          <InvoiceStatusBadge status={inv.status as any} />
-                        </div>
-                        <div className="text-xs text-foreground">{inv.customerName}</div>
-                      </div>
+            )}
+          </CardContent>
+        </Card>
 
-                      <div className="text-right">
-                        <div className="text-xs font-bold tabular-nums text-foreground">
-                          {formatIDR(inv.total)}
-                        </div>
-                        <PaymentStatusBadge status={inv.paymentStatus as any} />
-                      </div>
-                    </Link>
-                  ))}
+        {/* Card 3: Recent Invoices */}
+        <Card className="border-border flex flex-col h-[460px] md:col-span-2 lg:col-span-1">
+          <CardHeader className="pb-3 shrink-0 flex flex-row items-center justify-between">
+            <div>
+              <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                <FileText className="size-4 text-muted-foreground" />
+                <span>Transaksi Terkini</span>
+              </CardTitle>
+              <CardDescription className="text-xs">
+                Invoice terbaru yang tercatat di sistem.
+              </CardDescription>
+            </div>
+            <Link
+              to={'/invoices' as any}
+              className="text-xs text-muted-foreground hover:text-foreground inline-flex items-center gap-1 font-medium"
+            >
+              <span>Semua</span>
+              <ArrowRight className="size-3" />
+            </Link>
+          </CardHeader>
+          <CardContent className="flex-1 min-h-0 overflow-y-auto pr-1 flex flex-col">
+            {dash.recentInvoices.length === 0 ? (
+              <div className="py-12 text-center text-xs text-muted-foreground my-auto flex flex-col items-center justify-center gap-2">
+                <div className="size-9 rounded-full bg-muted/60 flex items-center justify-center text-muted-foreground">
+                  <FileText className="size-4" />
                 </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+                <p className="font-medium text-foreground">Belum ada transaksi</p>
+                <p className="text-[11px] text-muted-foreground">
+                  Invoice baru akan tercatat di sini.
+                </p>
+              </div>
+            ) : (
+              <div className="divide-y divide-border/60">
+                {dash.recentInvoices.map((inv) => (
+                  <Link
+                    key={inv.id}
+                    to={`/invoices/${inv.id}` as any}
+                    className="flex items-center justify-between py-2.5 hover:bg-muted/30 px-2 rounded-lg transition"
+                  >
+                    <div className="min-w-0 flex-1 space-y-0.5 pr-2">
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-xs font-semibold text-foreground shrink-0">
+                          {inv.number}
+                        </span>
+                        <InvoiceStatusBadge status={inv.status as any} />
+                        <span className="text-xs font-medium text-foreground truncate">
+                          {inv.customerName}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                        <Calendar className="size-3 shrink-0 text-muted-foreground/70" />
+                        <span>
+                          {formatDateID(inv.rentStart)} - {formatDateID(inv.rentEnd)}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="text-right shrink-0 space-y-1">
+                      <div className="text-xs font-bold tabular-nums text-foreground">
+                        {formatIDR(inv.total)}
+                      </div>
+                      <PaymentStatusBadge status={inv.paymentStatus as any} />
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
+
+      {/* Monthly Operations & Transactions Calendar */}
+      <MonthlyCalendar />
     </div>
   )
 }
+

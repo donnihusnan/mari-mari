@@ -20,7 +20,7 @@ const MONTH_NAMES = [
   "Desember",
 ]
 
-const DAY_NAMES = ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"]
+const DAY_NAMES = ["Sen", "Sel", "Rab", "Kam", "Jum", "Sab", "Min"]
 
 function parseYMD(str?: string) {
   if (!str) return null
@@ -115,9 +115,10 @@ export function DatePicker({
     }
   }
 
-  // Generate calendar days grid
+  // Generate calendar days grid (Monday-first: 0 = Mon, 6 = Sun)
   const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate()
-  const firstDayOfWeek = new Date(viewYear, viewMonth, 1).getDay() // 0 = Sun
+  const rawFirstDay = new Date(viewYear, viewMonth, 1).getDay() // 0 = Sun
+  const firstDayOfWeek = (rawFirstDay + 6) % 7 // 0 = Mon, 6 = Sun
   const daysInPrevMonth = new Date(viewYear, viewMonth, 0).getDate()
 
   const cells = React.useMemo(() => {
@@ -269,10 +270,13 @@ export function DatePicker({
 
         {/* Days of week */}
         <div className="grid grid-cols-7 gap-1 text-center mb-1">
-          {DAY_NAMES.map((d) => (
+          {DAY_NAMES.map((d, idx) => (
             <div
               key={d}
-              className="text-[11px] font-medium text-muted-foreground py-1"
+              className={cn(
+                "text-[11px] font-medium text-muted-foreground py-1",
+                idx === 6 && "text-destructive/80"
+              )}
             >
               {d}
             </div>

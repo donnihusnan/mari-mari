@@ -9,7 +9,6 @@ import {
 } from "@tanstack/react-router";
 import { getAuthSessionFn, logoutFn } from "@/features/auth/server/auth.fn";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
 import {
   Sidebar,
   SidebarContent,
@@ -108,7 +107,7 @@ function AdminLayout() {
     <SidebarProvider>
       <Sidebar collapsible="icon" className="border-r border-sidebar-border">
         {/* Brand Header */}
-        <SidebarHeader className="border-b border-sidebar-border px-4 py-3.5">
+        <SidebarHeader className="flex h-14 shrink-0 justify-center border-b border-sidebar-border px-4">
           <div className="flex items-center gap-3">
             <img
               src="/marimari-logo.png"
@@ -176,10 +175,10 @@ function AdminLayout() {
 
       {/* Main App Inset */}
       <SidebarInset>
-        <header className="flex h-14 shrink-0 items-center justify-between border-b border-border bg-background px-4 md:px-6">
-          <div className="flex items-center gap-3">
+        <header className="sticky top-0 z-40 flex h-14 shrink-0 items-center justify-between border-b border-border bg-background/95 px-4 backdrop-blur-sm md:px-6 transition-colors">
+          <div className="flex items-center gap-2.5">
             <SidebarTrigger className="-ml-1 text-muted-foreground hover:text-foreground" />
-            <Separator orientation="vertical" className="mr-2 h-4" />
+            <span className="h-4 w-px bg-border shrink-0 self-center" aria-hidden="true" />
             <div className="text-xs font-medium text-muted-foreground">
               {location.pathname === "/" && "Ringkasan & Operasional"}
               {location.pathname.startsWith("/equipment") && "Katalog & Stok Alat"}
@@ -199,9 +198,9 @@ function AdminLayout() {
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto p-4 md:p-8">
+        <div className="flex-1 p-4 md:p-8">
           <Outlet />
-        </main>
+        </div>
       </SidebarInset>
     </SidebarProvider>
   );
