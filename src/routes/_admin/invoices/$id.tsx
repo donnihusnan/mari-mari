@@ -130,7 +130,7 @@ function InvoiceDetailPage() {
   const remainingBalance = Math.max(0, invoice.total - invoice.amountPaid)
 
   return (
-    <div className="max-w-4xl space-y-6">
+    <div className="w-full space-y-6">
       {/* Top Navigation & Actions */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
@@ -279,8 +279,8 @@ function InvoiceDetailPage() {
           <CardTitle className="text-sm font-semibold">Rincian Alat Disewa</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="rounded-lg border border-border overflow-hidden">
-            <table className="w-full text-xs">
+          <div className="rounded-lg border border-border overflow-x-auto">
+            <table className="w-full min-w-[520px] text-xs">
               <thead className="bg-muted/50 border-b border-border text-muted-foreground">
                 <tr>
                   <th className="py-2.5 px-3 text-left font-medium">Equipment</th>

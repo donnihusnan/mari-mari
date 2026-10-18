@@ -20,6 +20,7 @@ import {
 } from '@/components/ui/select'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { DatePicker } from '@/components/ui/date-picker'
 import {
   ArrowLeft,
   Plus,
@@ -234,7 +235,7 @@ function NewInvoicePage() {
   const filteredCatalog = catalog
 
   return (
-    <div className="max-w-4xl space-y-6">
+    <div className="w-full space-y-6">
       {/* Header */}
       <div className="flex items-center gap-3">
         <Link
@@ -316,11 +317,10 @@ function NewInvoicePage() {
                   <Label htmlFor="rent-start" className="text-xs">
                     Tgl Mulai *
                   </Label>
-                  <Input
+                  <DatePicker
                     id="rent-start"
-                    type="date"
                     value={rentStart}
-                    onChange={(e) => setDates(e.target.value, rentEnd)}
+                    onChange={(val) => setDates(val, rentEnd)}
                     required
                   />
                 </div>
@@ -329,11 +329,11 @@ function NewInvoicePage() {
                   <Label htmlFor="rent-end" className="text-xs">
                     Tgl Selesai *
                   </Label>
-                  <Input
+                  <DatePicker
                     id="rent-end"
-                    type="date"
                     value={rentEnd}
-                    onChange={(e) => setDates(rentStart, e.target.value)}
+                    minDate={rentStart}
+                    onChange={(val) => setDates(rentStart, val)}
                     required
                   />
                 </div>
@@ -525,8 +525,8 @@ function NewInvoicePage() {
                 Belum ada perlengkapan yang ditambahkan ke invoice ini.
               </div>
             ) : (
-              <div className="rounded-lg border border-border overflow-hidden">
-                <table className="w-full text-xs">
+              <div className="rounded-lg border border-border overflow-x-auto">
+                <table className="w-full min-w-[560px] text-xs">
                   <thead className="bg-muted/50 border-b border-border text-muted-foreground">
                     <tr>
                       <th className="py-2.5 px-3 text-left font-medium">Perlengkapan</th>
