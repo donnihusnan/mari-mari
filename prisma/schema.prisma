@@ -1,0 +1,101 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Category {
+  id        String      @id @default(cuid())
+  name      String      @unique
+  slug      String      @unique
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  equipment Equipment[]
+}
+
+model Equipment {
+  id          String        @id @default(cuid())
+  categoryId  String
+  name        String
+  description String?
+  pricePerDay Int
+  totalStock  Int           @default(0)
+  imagePath   String?
+  isActive    Boolean       @default(true)
+  deletedAt   DateTime?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  category    Category      @relation(fields: [categoryId], references: [id])
+  items       InvoiceItem[]
+
+  @@index([categoryId])
+  @@index([deletedAt])
+}
+
+model Invoice {
+  id            String        @id @default(cuid())
+  number        String        @unique
+  publicToken   String        @unique @default(cuid())
+  customerName  String
+  customerPhone String
+  rentStart     DateTime      @db.Date
+  rentEnd       DateTime      @db.Date
+  days          Int
+  status        InvoiceStatus @default(DRAFT)
+  paymentStatus PaymentStatus @default(UNPAID)
+  amountPaid    Int           @default(0)
+  subtotal      Int
+  discount      Int           @default(0)
+  total         Int
+  notes         String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  items         InvoiceItem[]
+
+  @@index([status])
+  @@index([rentStart, rentEnd])
+}
+
+model InvoiceItem {
+  id            String     @id @default(cuid())
+  invoiceId     String
+  equipmentId   String
+  equipmentName String
+  source        ItemSource @default(STOCK)
+  supplierName  String?
+  costPrice     Int?
+  quantity      Int
+  unitPrice     Int
+  lineTotal     Int
+  equipment     Equipment  @relation(fields: [equipmentId], references: [id])
+  invoice       Invoice    @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([invoiceId])
+  @@index([equipmentId, source])
+}
+
+model InvoiceSequence {
+  year Int @id
+  last Int @default(0)
+}
+
+enum InvoiceStatus {
+  DRAFT
+  BOOKED
+  ACTIVE
+  RETURNED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  UNPAID
+  DP
+  PAID
+}
+
+enum ItemSource {
+  STOCK
+  OUTSOURCE
+}
